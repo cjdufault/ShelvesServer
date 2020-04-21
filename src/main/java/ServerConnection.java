@@ -5,7 +5,6 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import kong.unirest.Unirest;
 
 public class ServerConnection implements Runnable{
 
@@ -78,7 +77,6 @@ public class ServerConnection implements Runnable{
                 connection.close();
             }
             catch (IOException e){
-                System.out.println(e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -88,10 +86,6 @@ public class ServerConnection implements Runnable{
         List<Task> returnedTasks = new ArrayList<>();
 
         switch (requestKeyword.toLowerCase()){
-            case "test_connection": {
-                out.println("Status: OK");
-                break;
-            }
             // get all tasks
             case "get_all_tasks": {
                 returnedTasks = tasksDB.getAllTasks();
@@ -182,13 +176,22 @@ public class ServerConnection implements Runnable{
             }
         }
 
-        // convert all tasks to JSON objects
-        List<JSONObject> jsonObjects = new ArrayList<>();
-        for (Task task : returnedTasks){
-            jsonObjects.add(task.toJSON());
+        JSONObject json;
+
+        // special case for testing connection w/o making a list of tasks
+        if (requestKeyword.equals("test_connection")){
+            json = new JSONObject("{\"status_code\":0}");
+        }
+        else {
+            // convert all tasks to JSON objects
+            List<JSONObject> jsonObjects = new ArrayList<>();
+            for (Task task : returnedTasks){
+                jsonObjects.add(task.toJSON());
+            }
+
+            json = makeOutputJSON(jsonObjects);
         }
 
-        JSONObject json = makeOutputJSON(jsonObjects);
         out.println(json);
     }
 

@@ -28,15 +28,7 @@ public class Server {
             }
         }
         catch (IOException e){
-            System.out.println(e.getMessage());
             e.printStackTrace();
         }
-        finally {
-            System.out.println("ShelvesServer has been stopped");
-        }
-    }
-
-    void stop(){
-        running.set(false);
     }
 }
