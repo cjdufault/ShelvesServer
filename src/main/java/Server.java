@@ -1,31 +1,28 @@
+import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.net.InetSocketAddress;
 
 public class Server {
 
     private static final int PORT = 5000; // temporary port for testing
-    private AtomicBoolean running = new AtomicBoolean();
+    private static final String DATABASE_URL = "jdbc:sqlite:tasksDB.sqlite";
 
     public static void main(String[] args) {
-        Server server = new Server();
-        server.start();
-    }
-
-    void start(){
-        running.set(true);
+        Database tasksDB = new Database(DATABASE_URL);
 
         try {
-            ServerSocket serverConnection = new ServerSocket(PORT);
-            System.out.println(String.format("ShelvesServer listening on Port %s", PORT));
+            HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
 
-            while (running.get()){
-                ServerConnection connection = new ServerConnection(serverConnection.accept());
+            server.createContext("/test_connection", new RequestHandler(tasksDB));
+            server.createContext("/get_all_tasks", new RequestHandler(tasksDB));
+            server.createContext("/get_complete_tasks", new RequestHandler(tasksDB));
+            server.createContext("/get_incomplete_tasks", new RequestHandler(tasksDB));
+            server.createContext("/get_task", new RequestHandler(tasksDB));
+            server.createContext("/search", new RequestHandler(tasksDB));
+            server.createContext("/complete_task", new RequestHandler(tasksDB));
 
-                // starts a new thread for each client connection
-                Thread connectionThread = new Thread(connection);
-                connectionThread.start();
-            }
+            server.start();
+            System.out.printf("ShelvesServer listening on port %s", PORT);
         }
         catch (IOException e){
             e.printStackTrace();

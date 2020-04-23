@@ -160,7 +160,7 @@ public class Database {
 
     /** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ADD METHODS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ **/
 
-    public void addTask(Task task){
+    public boolean addTask(Task task){
         int count = getDatabaseCount();
 
         try (Connection connection = DriverManager.getConnection(database_URL)){
@@ -190,14 +190,16 @@ public class Database {
             for (String dependency : task.getDependencies()) {
                 addDependency(count + 1, Integer.parseInt(dependency));
             }
+            return true;
         }
         catch (SQLException e){
             e.printStackTrace();
         }
+        return false;
     }
 
     // designate that a task depends on another task
-    public void addDependency(int dependentID, int dependencyID){ // dependent task relies on dependency task
+    public boolean addDependency(int dependentID, int dependencyID){ // dependent task relies on dependency task
         // get the existing dependencies that the dependent task has
         List<String> dependencies = getDependencies(dependentID);
 
@@ -210,17 +212,20 @@ public class Database {
             dependents.add(Integer.toString(dependentID));
 
             // update the dependencies column of the dependent task
-            updateDependencies(dependentID, dependencies);
+            boolean dependencyAdded = updateDependencies(dependentID, dependencies);
 
             // update the dependents column of the dependency task
-            updateDependents(dependencyID, dependents);
+            boolean dependentAdded = updateDependents(dependencyID, dependents);
+
+            return dependencyAdded && dependentAdded;
         }
+        return false;
     }
 
     /** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~REMOVE METHODS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ **/
 
     // remove the task with the specified ID
-    public void removeTask(int ID){
+    public boolean removeTask(int ID){
         Task task = getTask(ID);
 
         // clear all dependents and dependencies of this task
@@ -237,15 +242,16 @@ public class Database {
             PreparedStatement preparedStatement = connection.prepareStatement(removeTaskUpdate);
 
             preparedStatement.setInt(1, ID);
-
             preparedStatement.executeUpdate();
+            return true;
         }
         catch (SQLException e){
             e.printStackTrace();
         }
+        return false;
     }
 
-    public void removeDependency(int dependentID, int dependencyID){
+    public boolean removeDependency(int dependentID, int dependencyID){
         // get the existing dependencies that the dependent task has
         List<String> dependencies = getDependencies(dependentID);
 
@@ -258,15 +264,18 @@ public class Database {
             dependents.remove(Integer.toString(dependentID));
 
             // update each task
-            updateDependencies(dependentID, dependencies);
-            updateDependents(dependencyID, dependents);
+            boolean dependenciesRemoved = updateDependencies(dependentID, dependencies);
+            boolean dependentsRemoved = updateDependents(dependencyID, dependents);
+
+            return dependenciesRemoved && dependentsRemoved;
         }
+        return false;
     }
 
     /** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~UPDATE METHODS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ **/
 
     // mark a task as complete
-    public void completeTask(int ID){
+    public boolean completeTask(int ID){
         try (Connection connection = DriverManager.getConnection(database_URL)) {
             String update = "UPDATE Tasks SET isComplete = 1, dateComplete = ? WHERE ID == ?";
             PreparedStatement preparedStatement = connection.prepareStatement(update);
@@ -275,14 +284,16 @@ public class Database {
             preparedStatement.setLong(1, dateComplete);
             preparedStatement.setInt(2, ID);
             preparedStatement.executeUpdate();
+            return true;
         }
         catch (SQLException e) {
             e.printStackTrace();
         }
+        return false;
     }
 
     // updates the email column for the person who has claimed the task
-    public void updateClaim(int ID, String claimedByEmail){
+    public boolean updateClaim(int ID, String claimedByEmail){
         try (Connection connection = DriverManager.getConnection(database_URL)){
             String update = "UPDATE Tasks SET claimedByEmail = ? WHERE ID == ?";
             PreparedStatement preparedStatement = connection.prepareStatement(update);
@@ -290,38 +301,44 @@ public class Database {
             preparedStatement.setString(1, claimedByEmail);
             preparedStatement.setInt(2, ID);
             preparedStatement.executeUpdate();
+            return true;
         }
         catch (SQLException e){
             e.printStackTrace();
         }
+        return false;
     }
 
     // only used internally when adding or removing dependencies
-    private void updateDependencies(int ID, List<String> dependencies){
+    private boolean updateDependencies(int ID, List<String> dependencies){
         try (Connection connection = DriverManager.getConnection(database_URL)){
             String updateDependencies = "UPDATE Tasks SET dependencies = ? WHERE ID == ?";
             PreparedStatement prepareUpdateDependencies = connection.prepareStatement(updateDependencies);
             prepareUpdateDependencies.setString(1, convertListToString(dependencies));
             prepareUpdateDependencies.setInt(2, ID);
             prepareUpdateDependencies.executeUpdate();
+            return true;
         }
         catch (SQLException e){
             e.printStackTrace();
         }
+        return false;
     }
 
     // only used internally when adding or removing dependencies
-    private void updateDependents(int ID, List<String> dependents){
+    private boolean updateDependents(int ID, List<String> dependents){
         try (Connection connection = DriverManager.getConnection(database_URL)){
             String updateDependents = "UPDATE Tasks SET dependents = ? WHERE ID == ?";
             PreparedStatement prepareUpdateDependents = connection.prepareStatement(updateDependents);
             prepareUpdateDependents.setString(1, convertListToString(dependents));
             prepareUpdateDependents.setInt(2, ID);
             prepareUpdateDependents.executeUpdate();
+            return true;
         }
         catch (SQLException e){
             e.printStackTrace();
         }
+        return false;
     }
 
     /** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~HELPER METHODS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ **/

@@ -1,91 +1,73 @@
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.io.*;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class ServerConnection implements Runnable{
+public class RequestHandler implements HttpHandler {
 
-    private static final String database_URL = "jdbc:sqlite:tasksDB.sqlite";
+    private Database tasksDB;
 
-    private Database tasksDB = new Database(database_URL);
-    private Socket connection;
-
-    ServerConnection(Socket connection){
-        this.connection = connection;
+    RequestHandler(Database tasksDB){
+        this.tasksDB = tasksDB;
     }
 
-    // handles each client connection
     @Override
-    public void run() {
-        BufferedReader in = null;
-        PrintWriter out = null;
+    public void handle(HttpExchange exchange) throws IOException {
+        String method = exchange.getRequestMethod();
+        String path = exchange.getHttpContext().getPath();
+        System.out.println(path);
+        BufferedReader in = new BufferedReader(new InputStreamReader(exchange.getRequestBody()));
+        OutputStream out = exchange.getResponseBody();
+
+        String[] pathComponents = path.substring(1).split("/");
+        String requestKeyword = pathComponents[0];
+        String requestArgument = null;
+        if (pathComponents.length > 1){
+            requestArgument = pathComponents[1];
+        }
+
+        String response;
+        int responseCode;
 
         try {
-            // reads from client connection
-            in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-
-            // writes to client connection
-            out = new PrintWriter(new OutputStreamWriter(connection.getOutputStream()), true);
-
-            // read the header in from the BufferedReader
-            StringBuilder headerBuilder = new StringBuilder();
-
-            String headerLine = in.readLine();
-            while (headerLine.length() != 0){
-                headerBuilder.append(headerLine);
-                headerBuilder.append("\n");
-                headerLine = in.readLine();
-            }
-            String header = headerBuilder.toString();
-
-            // grab the first line and split it up by the spaces
-            String[] splitHeaderLineOne = header.split("\n")[0].split(" ");
-
-            String method = splitHeaderLineOne[0]; // e.g. GET, POST, etc
-            String[] request = splitHeaderLineOne[1].substring(1).split("/");
-            String requestKeyword = request[0]; // indicates what kind of request this is
-
-            String requestArgument = null;
-            if (request.length > 1) requestArgument = request[1];
-
             switch (method.toUpperCase()) {
                 case "GET": {
-                    handleGetRequest(requestKeyword, requestArgument, out);
+                    response = handleGetRequest(requestKeyword, requestArgument);
+                    responseCode = 200;
                     break;
                 }
                 case "POST": {
-                    handlePostRequest(requestKeyword, in, out);
+                    response = handlePostRequest(requestKeyword, in);
+                    responseCode = 200;
                     break;
                 }
                 default: {
-                    out.println("501 Not Implemented");
+                    response = "501 Not Implemented";
+                    responseCode = 501;
                     break;
                 }
             }
+            exchange.sendResponseHeaders(responseCode, response.getBytes().length);
+            out.write(response.getBytes());
+            out.close();
         }
         catch (IOException e){
-            System.out.println(e.getMessage());
             e.printStackTrace();
-        }
-        finally {
-            try {
-                if (in != null) in.close();
-                if (out != null) out.close();
-                connection.close();
-            }
-            catch (IOException e){
-                e.printStackTrace();
-            }
         }
     }
 
-    private void handleGetRequest(String requestKeyword, String requestArgument, PrintWriter out){
+    private String handleGetRequest(String requestKeyword, String requestArgument){
         List<Task> returnedTasks = new ArrayList<>();
 
         switch (requestKeyword.toLowerCase()){
+            case "test_connection":{
+                return "{\"status_code\":0}";
+            }
             // get all tasks
             case "get_all_tasks": {
                 returnedTasks = tasksDB.getAllTasks();
@@ -111,7 +93,7 @@ public class ServerConnection implements Runnable{
                     }
                 }
                 else {
-                    out.println("No argument provided");
+                    return "{\"status_code\":1}";
                 }
                 break;
             }
@@ -121,7 +103,7 @@ public class ServerConnection implements Runnable{
                     returnedTasks = tasksDB.search(requestArgument);
                 }
                 else {
-                    out.println("No argument provided");
+                    return "{\"status_code\":1}";
                 }
                 break;
             // get a task's dependencies (tasks it depends on)
@@ -138,7 +120,7 @@ public class ServerConnection implements Runnable{
                     }
                 }
                 else {
-                    out.println("No argument provided");
+                    return "{\"status_code\":1}";
                 }
                 break;
             }
@@ -156,21 +138,28 @@ public class ServerConnection implements Runnable{
                     }
                 }
                 else {
-                    out.println("No argument provided");
+                    return "{\"status_code\":1}";
                 }
                 break;
             }
             case "remove_task": {
                 if (requestArgument != null){
                     int ID = Integer.parseInt(requestArgument);
-                    tasksDB.removeTask(ID);
+
+                    if (tasksDB.removeTask(ID)){
+                        return "{\"status_code\":0}";
+                    }
+                    return "{\"status_code\":1}";
                 }
-                break;
             }
             case "complete_task": {
                 if (requestArgument != null){
                     int ID = Integer.parseInt(requestArgument);
-                    tasksDB.completeTask(ID);
+
+                    if (tasksDB.completeTask(ID)){
+                        return "{\"status_code\":0}";
+                    }
+                    return "{\"status_code\":1}";
                 }
                 break;
             }
@@ -192,11 +181,11 @@ public class ServerConnection implements Runnable{
             json = makeOutputJSON(jsonObjects);
         }
 
-        out.println(json);
+        return json.toString();
     }
 
     // TODO: add a key that the admin can use to protect access to these
-    private void handlePostRequest(String requestKeyword, BufferedReader in, PrintWriter out) throws IOException{
+    private String handlePostRequest(String requestKeyword, BufferedReader in) throws IOException{
         StringBuilder payloadBuilder = new StringBuilder();
         while (in.ready()){
             payloadBuilder.append((char) in.read());
@@ -206,30 +195,44 @@ public class ServerConnection implements Runnable{
         switch (requestKeyword){
             case "add_task": {
                 Task newTask = parseTaskJSON(payload);
-                tasksDB.addTask(newTask);
-                break;
+
+                if (tasksDB.addTask(newTask)){
+                    return "{\"status_code\":0}";
+                }
+                return "{\"status_code\":1}";
             }
             case "add_dependency": {
                 JSONObject json = new JSONObject(payload);
                 int dependentID = json.getInt("dependentID");
                 int dependencyID = json.getInt("dependencyID");
-                tasksDB.addDependency(dependentID, dependencyID);
-                break;
+
+                if (tasksDB.addDependency(dependentID, dependencyID)){
+                    return "{\"status_code\":0}";
+                }
+                return "{\"status_code\":1}";
             }
             case "remove_dependency": {
                 JSONObject json = new JSONObject(payload);
                 int dependentID = json.getInt("dependentID");
                 int dependencyID = json.getInt("dependencyID");
-                tasksDB.removeDependency(dependentID, dependencyID);
-                break;
+
+                if (tasksDB.removeDependency(dependentID, dependencyID)){
+                    return "{\"status_code\":0}";
+                }
+                return "{\"status_code\":1}";
             }
             case "update_claim": {
                 JSONObject json = new JSONObject(payload);
                 int ID = json.getInt("ID");
                 String claimedByEmail = json.getString("claimedByEmail");
-                tasksDB.updateClaim(ID, claimedByEmail);
+
+                if (tasksDB.updateClaim(ID, claimedByEmail)){
+                    return "{\"status_code\":0}";
+                }
+                return "{\"status_code\":1}";
             }
         }
+        return "{\"status_code\":1}";
     }
 
     // takes the JSON from the client and makes a Task out of it
