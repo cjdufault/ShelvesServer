@@ -19,10 +19,17 @@ public class Server {
             server.createContext("/get_incomplete_tasks", new RequestHandler(tasksDB));
             server.createContext("/get_task", new RequestHandler(tasksDB));
             server.createContext("/search", new RequestHandler(tasksDB));
+            server.createContext("/get_dependencies", new RequestHandler(tasksDB));
+            server.createContext("/get_dependents", new RequestHandler(tasksDB));
+            server.createContext("/remove_task", new RequestHandler(tasksDB));
             server.createContext("/complete_task", new RequestHandler(tasksDB));
+            server.createContext("/add_task", new RequestHandler(tasksDB));
+            server.createContext("/add_dependency", new RequestHandler(tasksDB));
+            server.createContext("/remove_dependency", new RequestHandler(tasksDB));
+            server.createContext("/update_claim", new RequestHandler(tasksDB));
 
             server.start();
-            System.out.printf("ShelvesServer listening on port %s", PORT);
+            System.out.printf("ShelvesServer listening on port %s\n", PORT);
         }
         catch (IOException e){
             e.printStackTrace();

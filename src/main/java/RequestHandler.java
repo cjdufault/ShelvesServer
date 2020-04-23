@@ -2,7 +2,6 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Date;
@@ -18,13 +17,15 @@ public class RequestHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        // gather info about the request
         String method = exchange.getRequestMethod();
-        String path = exchange.getHttpContext().getPath();
-        System.out.println(path);
+        String requestURI = exchange.getRequestURI().toString(); // the url the client sent
+
         BufferedReader in = new BufferedReader(new InputStreamReader(exchange.getRequestBody()));
         OutputStream out = exchange.getResponseBody();
 
-        String[] pathComponents = path.substring(1).split("/");
+        // split the url the client sent to find what kind of response it wants, and an argument, if any
+        String[] pathComponents = requestURI.substring(1).split("/");
         String requestKeyword = pathComponents[0];
         String requestArgument = null;
         if (pathComponents.length > 1){
@@ -34,31 +35,29 @@ public class RequestHandler implements HttpHandler {
         String response;
         int responseCode;
 
-        try {
-            switch (method.toUpperCase()) {
-                case "GET": {
-                    response = handleGetRequest(requestKeyword, requestArgument);
-                    responseCode = 200;
-                    break;
-                }
-                case "POST": {
-                    response = handlePostRequest(requestKeyword, in);
-                    responseCode = 200;
-                    break;
-                }
-                default: {
-                    response = "501 Not Implemented";
-                    responseCode = 501;
-                    break;
-                }
+        // use the handling method appropriate to the request to make the response
+        switch (method.toUpperCase()) {
+            case "GET": {
+                response = handleGetRequest(requestKeyword, requestArgument);
+                responseCode = 200;
+                break;
             }
-            exchange.sendResponseHeaders(responseCode, response.getBytes().length);
-            out.write(response.getBytes());
-            out.close();
+            case "POST": {
+                response = handlePostRequest(requestKeyword, in);
+                responseCode = 200;
+                break;
+            }
+            default: {
+                response = "501 Not Implemented";
+                responseCode = 501;
+                break;
+            }
         }
-        catch (IOException e){
-            e.printStackTrace();
-        }
+
+        // send the response
+        exchange.sendResponseHeaders(responseCode, response.getBytes().length);
+        out.write(response.getBytes());
+        out.close();
     }
 
     private String handleGetRequest(String requestKeyword, String requestArgument){
