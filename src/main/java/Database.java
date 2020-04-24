@@ -355,6 +355,7 @@ public class Database {
     }
 
     // creates Task objects from results of a database query
+    @SuppressWarnings("DuplicatedCode") // looks similar to RequestHandler.parseTaskJSON, but isn't actually the same
     private Task makeTask(ResultSet results) throws SQLException{
         int ID = results.getInt("ID");
         String taskName = results.getString("taskName");

@@ -65,7 +65,8 @@ public class RequestHandler implements HttpHandler {
 
         switch (requestKeyword.toLowerCase()){
             case "test_connection":{
-                return "{\"status_code\":0}";
+                // send a status code and confirmation that this server is a ShelvesServer
+                return "{\"status_code\":0,\"service_name\":\"ShelvesServer\"}";
             }
             // get all tasks
             case "get_all_tasks": {
