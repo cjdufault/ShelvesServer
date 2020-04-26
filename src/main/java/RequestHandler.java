@@ -167,20 +167,13 @@ public class RequestHandler implements HttpHandler {
 
         JSONObject json;
 
-        // special case for testing connection w/o making a list of tasks
-        if (requestKeyword.equals("test_connection")){
-            json = new JSONObject("{\"status_code\":0}");
-        }
-        else {
-            // convert all tasks to JSON objects
-            List<JSONObject> jsonObjects = new ArrayList<>();
-            for (Task task : returnedTasks){
-                jsonObjects.add(task.toJSON());
-            }
-
-            json = makeOutputJSON(jsonObjects);
+        // convert all tasks to JSON objects
+        List<JSONObject> jsonObjects = new ArrayList<>();
+        for (Task task : returnedTasks){
+            jsonObjects.add(task.toJSON());
         }
 
+        json = makeOutputJSON(jsonObjects);
         return json.toString();
     }
 
@@ -213,8 +206,8 @@ public class RequestHandler implements HttpHandler {
             }
             case "remove_dependency": {
                 JSONObject json = new JSONObject(payload);
-                int dependentID = json.getInt("dependentID");
-                int dependencyID = json.getInt("dependencyID");
+                int dependentID = json.getInt("dependent_id");
+                int dependencyID = json.getInt("dependency_id");
 
                 if (tasksDB.removeDependency(dependentID, dependencyID)){
                     return "{\"status_code\":0}";
@@ -223,8 +216,8 @@ public class RequestHandler implements HttpHandler {
             }
             case "update_claim": {
                 JSONObject json = new JSONObject(payload);
-                int ID = json.getInt("ID");
-                String claimedByEmail = json.getString("claimedByEmail");
+                int ID = json.getInt("id");
+                String claimedByEmail = json.getString("claimed_by_email");
 
                 if (tasksDB.updateClaim(ID, claimedByEmail)){
                     return "{\"status_code\":0}";
@@ -240,11 +233,11 @@ public class RequestHandler implements HttpHandler {
         JSONObject json = new JSONObject(payload);
 
         // the easy ones
-        int ID = json.getInt("ID");
-        String taskName = json.getString("taskName");
+        int ID = json.getInt("id");
+        String taskName = json.getString("task_name");
         String description = json.getString("description");
-        Date dateCreated = new Date(json.getLong("dateCreated"));
-        Date dateDue = new Date(json.getLong("dateDue"));
+        Date dateCreated = new Date(json.getLong("date_created"));
+        Date dateDue = new Date(json.getLong("date_due"));
 
         // convert the JSONArrays to Lists
         List<String> requirements = new ArrayList<>();

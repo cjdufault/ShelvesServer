@@ -15,7 +15,6 @@ public class testDB {
     private static final String test_url = "jdbc:sqlite:testDB.sqlite";
     private String errorMessage;
 
-
     @Before
     public void start(){
         clearTable();
