@@ -387,12 +387,12 @@ public class Database {
         }
     }
 
-    // to convert the reqs array into a comma-separated string to be stored in DB
+    // to convert the reqs array into an asterisk-separated string to be stored in DB
     private String convertListToString(List<String> list){
         StringBuilder output = new StringBuilder();
 
         for (String string : list){
-            output.append(string).append(",");
+            output.append(string).append("*");
         }
 
         return output.toString();
@@ -401,7 +401,7 @@ public class Database {
     // to convert reqs string back to an array
     private List<String> convertStringToList(String string){
         if (!string.equals("")) {
-            return Arrays.asList(string.split(","));
+            return Arrays.asList(string.split("\\*"));
         }
         return new ArrayList<>();
     }
