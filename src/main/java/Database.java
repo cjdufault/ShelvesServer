@@ -22,6 +22,7 @@ public class Database {
                                     "dateDue NUMBER," +
                                     "dateComplete NUMBER," +
                                     "isComplete INT CHECK ( isComplete == 1 or isComplete == 0 )," + // 0: false, 1: true
+                                    "isClaimed INT CHECK ( isClaimed == 1 or isClaimed == 0 )," +
                                     "claimedByEmail TEXT," + // email address for person who has claimed the task
                                     "dependencies TEXT," +
                                     "dependents TEXT)";
@@ -295,7 +296,7 @@ public class Database {
     // updates the email column for the person who has claimed the task
     public boolean updateClaim(int ID, String claimedByEmail){
         try (Connection connection = DriverManager.getConnection(database_URL)){
-            String update = "UPDATE Tasks SET claimedByEmail = ? WHERE ID == ?";
+            String update = "UPDATE Tasks SET claimedByEmail = ?, isClaimed = 1 WHERE ID == ?";
             PreparedStatement preparedStatement = connection.prepareStatement(update);
 
             preparedStatement.setString(1, claimedByEmail);
@@ -355,7 +356,6 @@ public class Database {
     }
 
     // creates Task objects from results of a database query
-    @SuppressWarnings("DuplicatedCode") // looks similar to RequestHandler.parseTaskJSON, but isn't actually the same
     private Task makeTask(ResultSet results) throws SQLException{
         int ID = results.getInt("ID");
         String taskName = results.getString("taskName");
@@ -364,23 +364,26 @@ public class Database {
         Date dateCreated = new Date(results.getLong("dateCreated"));
         Date dateDue = new Date(results.getLong("dateDue"));
         boolean isComplete = results.getInt("isComplete") == 1;
-        String claimedByEmail = results.getString("claimedByEmail");
+        boolean isClaimed = results.getInt("isClaimed") == 1;
 
         List<String> dependencies = convertStringToList(results.getString("dependencies"));
         List<String> dependents = convertStringToList(results.getString("dependents"));
 
         if (isComplete){
             Date dateComplete = new Date(results.getLong("dateComplete"));
+            String claimedByEmail = results.getString("claimedByEmail");
+
             return new Task(ID, taskName, description, requirements, dateCreated,
-                    dateDue, dateComplete, true, claimedByEmail, dependencies, dependents);
+                    dateDue, dateComplete, true, isClaimed, claimedByEmail, dependencies, dependents);
         }
-        else if (claimedByEmail == null){
+        else if (isClaimed){
+            String claimedByEmail = results.getString("claimedByEmail");
             return new Task(ID, taskName, description, requirements, dateCreated,
-                    dateDue, false, dependencies, dependents);
+                    dateDue, false, true, claimedByEmail, dependencies, dependents);
         }
-        else{
+        else {
             return new Task(ID, taskName, description, requirements, dateCreated,
-                    dateDue, false, claimedByEmail, dependencies, dependents);
+                    dateDue, false, false, dependencies, dependents);
         }
     }
 

@@ -254,7 +254,7 @@ public class RequestHandler implements HttpHandler {
         }
 
         return new Task(ID, taskName, description, requirements, dateCreated,
-                dateDue, false, dependencies, dependents);
+                dateDue, false, false, dependencies, dependents);
     }
 
     // makes the JSONObject that will be sent to the client when they request task info
