@@ -54,7 +54,8 @@ public class RequestHandler implements HttpHandler {
             }
         }
 
-        // send the response
+        // configure and send headers, then send the response body
+        exchange.getResponseHeaders().add("Content-Type", "application/json");
         exchange.sendResponseHeaders(responseCode, response.getBytes().length);
         out.write(response.getBytes());
         out.close();
