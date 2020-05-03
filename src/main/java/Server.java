@@ -1,6 +1,9 @@
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class Server {
 
@@ -11,6 +14,7 @@ public class Server {
         Database tasksDB = new Database(DATABASE_URL);
 
         try {
+            // setup http server
             HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
 
             server.createContext("/test_connection", new RequestHandler(tasksDB));
@@ -28,6 +32,8 @@ public class Server {
             server.createContext("/remove_dependency", new RequestHandler(tasksDB));
             server.createContext("/update_claim", new RequestHandler(tasksDB));
 
+            server.setExecutor(new ThreadPoolExecutor
+                    (4, 8, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100)));
             server.start();
             System.out.printf("ShelvesServer listening on port %s\n", PORT);
         }

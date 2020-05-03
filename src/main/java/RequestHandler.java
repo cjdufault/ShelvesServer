@@ -143,27 +143,6 @@ public class RequestHandler implements HttpHandler {
                 }
                 break;
             }
-            case "remove_task": {
-                if (requestArgument != null){
-                    int ID = Integer.parseInt(requestArgument);
-
-                    if (tasksDB.removeTask(ID)){
-                        return "{\"status_code\":0}";
-                    }
-                    return "{\"status_code\":1}";
-                }
-            }
-            case "complete_task": {
-                if (requestArgument != null){
-                    int ID = Integer.parseInt(requestArgument);
-
-                    if (tasksDB.completeTask(ID)){
-                        return "{\"status_code\":0}";
-                    }
-                    return "{\"status_code\":1}";
-                }
-                break;
-            }
         }
 
         JSONObject json;
@@ -221,6 +200,24 @@ public class RequestHandler implements HttpHandler {
                 String claimedByEmail = json.getString("claimed_by_email");
 
                 if (tasksDB.updateClaim(ID, claimedByEmail)){
+                    return "{\"status_code\":0}";
+                }
+                return "{\"status_code\":1}";
+            }
+            case "remove_task": {
+                JSONObject json = new JSONObject(payload);
+                int ID = json.getInt("id");
+
+                if (tasksDB.removeTask(ID)){
+                    return "{\"status_code\":0}";
+                }
+                return "{\"status_code\":1}";
+            }
+            case "complete_task": {
+                JSONObject json = new JSONObject(payload);
+                int ID = json.getInt("id");
+
+                if (tasksDB.completeTask(ID)){
                     return "{\"status_code\":0}";
                 }
                 return "{\"status_code\":1}";
