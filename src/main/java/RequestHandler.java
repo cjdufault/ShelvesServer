@@ -3,16 +3,22 @@ import com.sun.net.httpserver.HttpHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.*;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 public class RequestHandler implements HttpHandler {
 
-    private Database tasksDB;
+    private static final String STATUS_OK = "{\"status_code\":0}\n";
+    private static final String STATUS_NOT_OK = "{\"status_code\":1}\n";
 
-    RequestHandler(Database tasksDB){
+    private Database tasksDB;
+    private ServerSideAuthentication auth;
+
+    RequestHandler(Database tasksDB, ServerSideAuthentication auth){
         this.tasksDB = tasksDB;
+        this.auth = auth;
     }
 
     @Override
@@ -20,6 +26,7 @@ public class RequestHandler implements HttpHandler {
         // gather info about the request
         String method = exchange.getRequestMethod();
         String requestURI = exchange.getRequestURI().toString(); // the url the client sent
+        InetAddress remoteAddress = exchange.getRemoteAddress().getAddress();
 
         BufferedReader in = new BufferedReader(new InputStreamReader(exchange.getRequestBody()));
         OutputStream out = exchange.getResponseBody();
@@ -38,12 +45,12 @@ public class RequestHandler implements HttpHandler {
         // use the handling method appropriate to the request to make the response
         switch (method.toUpperCase()) {
             case "GET": {
-                response = handleGetRequest(requestKeyword, requestArgument);
+                response = handleGetRequest(requestKeyword, requestArgument, remoteAddress);
                 responseCode = 200;
                 break;
             }
             case "POST": {
-                response = handlePostRequest(requestKeyword, in);
+                response = handlePostRequest(requestKeyword, in, remoteAddress);
                 responseCode = 200;
                 break;
             }
@@ -61,13 +68,16 @@ public class RequestHandler implements HttpHandler {
         out.close();
     }
 
-    private String handleGetRequest(String requestKeyword, String requestArgument){
+    private String handleGetRequest(String requestKeyword, String requestArgument, InetAddress remoteAddress){
         List<Task> returnedTasks = new ArrayList<>();
 
         switch (requestKeyword.toLowerCase()){
-            case "test_connection":{
+            case "test_connection": {
                 // send a status code and confirmation that this server is a ShelvesServer
-                return "{\"status_code\":0,\"service_name\":\"ShelvesServer\"}";
+                return "{\"status_code\":0,\"service_name\":\"ShelvesServer\"}\n";
+            }
+            case "request_nonce": {
+                return auth.getNonce(remoteAddress);
             }
             // get all tasks
             case "get_all_tasks": {
@@ -94,7 +104,7 @@ public class RequestHandler implements HttpHandler {
                     }
                 }
                 else {
-                    return "{\"status_code\":1}";
+                    return STATUS_NOT_OK;
                 }
                 break;
             }
@@ -104,7 +114,7 @@ public class RequestHandler implements HttpHandler {
                     returnedTasks = tasksDB.search(requestArgument);
                 }
                 else {
-                    return "{\"status_code\":1}";
+                    return STATUS_NOT_OK;
                 }
                 break;
             // get a task's dependencies (tasks it depends on)
@@ -121,7 +131,7 @@ public class RequestHandler implements HttpHandler {
                     }
                 }
                 else {
-                    return "{\"status_code\":1}";
+                    return STATUS_NOT_OK;
                 }
                 break;
             }
@@ -139,7 +149,7 @@ public class RequestHandler implements HttpHandler {
                     }
                 }
                 else {
-                    return "{\"status_code\":1}";
+                    return STATUS_NOT_OK;
                 }
                 break;
             }
@@ -157,73 +167,78 @@ public class RequestHandler implements HttpHandler {
         return json.toString();
     }
 
-    // TODO: add a key that the admin can use to protect access to these
-    private String handlePostRequest(String requestKeyword, BufferedReader in) throws IOException{
-        StringBuilder payloadBuilder = new StringBuilder();
-        while (in.ready()){
-            payloadBuilder.append((char) in.read());
+    private String handlePostRequest(String requestKeyword, BufferedReader in, InetAddress remoteAddress) throws IOException{
+        String authHash = in.readLine();
+        boolean authenticated = auth.checkCredentials(authHash, remoteAddress);
+
+        if (authenticated) { // only allow access if authenticated
+            StringBuilder payloadBuilder = new StringBuilder();
+            String line;
+            while ((line = in.readLine()) != null) {
+                payloadBuilder.append(line);
+            }
+            String payload = payloadBuilder.toString();
+
+            switch (requestKeyword) {
+                case "add_task": {
+                    Task newTask = parseTaskJSON(payload);
+
+                    if (tasksDB.addTask(newTask)) {
+                        return STATUS_OK;
+                    }
+                    return STATUS_NOT_OK;
+                }
+                case "add_dependency": {
+                    JSONObject json = new JSONObject(payload);
+                    int dependentID = json.getInt("dependentID");
+                    int dependencyID = json.getInt("dependencyID");
+
+                    if (tasksDB.addDependency(dependentID, dependencyID)) {
+                        return STATUS_OK;
+                    }
+                    return STATUS_NOT_OK;
+                }
+                case "remove_dependency": {
+                    JSONObject json = new JSONObject(payload);
+                    int dependentID = json.getInt("dependent_id");
+                    int dependencyID = json.getInt("dependency_id");
+
+                    if (tasksDB.removeDependency(dependentID, dependencyID)) {
+                        return STATUS_OK;
+                    }
+                    return STATUS_NOT_OK;
+                }
+                case "update_claim": {
+                    JSONObject json = new JSONObject(payload);
+                    int ID = json.getInt("id");
+                    String claimedByEmail = json.getString("claimed_by_email");
+
+                    if (tasksDB.updateClaim(ID, claimedByEmail)) {
+                        return STATUS_OK;
+                    }
+                    return STATUS_NOT_OK;
+                }
+                case "remove_task": {
+                    JSONObject json = new JSONObject(payload);
+                    int ID = json.getInt("id");
+
+                    if (tasksDB.removeTask(ID)) {
+                        return STATUS_OK;
+                    }
+                    return STATUS_NOT_OK;
+                }
+                case "complete_task": {
+                    JSONObject json = new JSONObject(payload);
+                    int ID = json.getInt("id");
+
+                    if (tasksDB.completeTask(ID)) {
+                        return STATUS_OK;
+                    }
+                    return STATUS_NOT_OK;
+                }
+            }
         }
-        String payload = payloadBuilder.toString();
-
-        switch (requestKeyword){
-            case "add_task": {
-                Task newTask = parseTaskJSON(payload);
-
-                if (tasksDB.addTask(newTask)){
-                    return "{\"status_code\":0}";
-                }
-                return "{\"status_code\":1}";
-            }
-            case "add_dependency": {
-                JSONObject json = new JSONObject(payload);
-                int dependentID = json.getInt("dependentID");
-                int dependencyID = json.getInt("dependencyID");
-
-                if (tasksDB.addDependency(dependentID, dependencyID)){
-                    return "{\"status_code\":0}";
-                }
-                return "{\"status_code\":1}";
-            }
-            case "remove_dependency": {
-                JSONObject json = new JSONObject(payload);
-                int dependentID = json.getInt("dependent_id");
-                int dependencyID = json.getInt("dependency_id");
-
-                if (tasksDB.removeDependency(dependentID, dependencyID)){
-                    return "{\"status_code\":0}";
-                }
-                return "{\"status_code\":1}";
-            }
-            case "update_claim": {
-                JSONObject json = new JSONObject(payload);
-                int ID = json.getInt("id");
-                String claimedByEmail = json.getString("claimed_by_email");
-
-                if (tasksDB.updateClaim(ID, claimedByEmail)){
-                    return "{\"status_code\":0}";
-                }
-                return "{\"status_code\":1}";
-            }
-            case "remove_task": {
-                JSONObject json = new JSONObject(payload);
-                int ID = json.getInt("id");
-
-                if (tasksDB.removeTask(ID)){
-                    return "{\"status_code\":0}";
-                }
-                return "{\"status_code\":1}";
-            }
-            case "complete_task": {
-                JSONObject json = new JSONObject(payload);
-                int ID = json.getInt("id");
-
-                if (tasksDB.completeTask(ID)){
-                    return "{\"status_code\":0}";
-                }
-                return "{\"status_code\":1}";
-            }
-        }
-        return "{\"status_code\":1}";
+        return STATUS_NOT_OK;
     }
 
     // takes the JSON from the client and makes a Task out of it
