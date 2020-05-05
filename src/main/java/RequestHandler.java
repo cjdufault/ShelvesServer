@@ -180,6 +180,9 @@ public class RequestHandler implements HttpHandler {
             String payload = payloadBuilder.toString();
 
             switch (requestKeyword) {
+                case "auth": {
+                    return STATUS_OK;
+                }
                 case "add_task": {
                     Task newTask = parseTaskJSON(payload);
 

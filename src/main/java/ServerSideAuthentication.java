@@ -61,7 +61,6 @@ class ServerSideAuthentication {
 
     // compare hashed credentials provided by the client with the hash of the expected credentials
     boolean checkCredentials(String clientHash, InetAddress remoteAddress) {
-        System.out.println(nonceMap.get(remoteAddress));
         String expectedHash = hash(passwordHash + nonceMap.get(remoteAddress));
         nonceMap.remove(remoteAddress); // remove the client's IP address and nonce from the hash map
         return expectedHash.equals(clientHash);

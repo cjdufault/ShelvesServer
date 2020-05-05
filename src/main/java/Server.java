@@ -30,6 +30,7 @@ public class Server {
             server.createContext("/search", handler);
             server.createContext("/get_dependencies", handler);
             server.createContext("/get_dependents", handler);
+            server.createContext("/auth", handler);
             server.createContext("/remove_task", handler);
             server.createContext("/complete_task", handler);
             server.createContext("/add_task", handler);
