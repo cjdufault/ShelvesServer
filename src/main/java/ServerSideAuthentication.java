@@ -9,7 +9,7 @@ import java.util.Random;
 class ServerSideAuthentication {
 
     private String passwordHash;
-    private HashMap<InetAddress, String> nonceMap = new HashMap<>();
+    private final HashMap<InetAddress, String> nonceMap = new HashMap<>();
 
     ServerSideAuthentication(Path credFilePath) {
         try {
@@ -23,10 +23,9 @@ class ServerSideAuthentication {
     private void readCredentials(Path credFilePath) throws IOException {
         try {
             BufferedReader br = new BufferedReader(new FileReader(credFilePath.toString()));
-
             passwordHash = br.readLine();
-
             br.close();
+
             if (passwordHash != null){ // if the file is empty
                 return;
             }
@@ -53,6 +52,7 @@ class ServerSideAuthentication {
 
         String nonce = hash(Long.toString(seed));
 
+        // add nonce to nonceMap to be referenced when the client makes the request
         nonceMap.remove(remoteAddress); // remove any existing entry for this IP address
         nonceMap.put(remoteAddress, nonce);
 
@@ -76,7 +76,8 @@ class ServerSideAuthentication {
 
         try {
             password = in.readLine();
-        } catch (IOException ioe) {
+        }
+        catch (IOException ioe) {
             ioe.printStackTrace();
         }
 

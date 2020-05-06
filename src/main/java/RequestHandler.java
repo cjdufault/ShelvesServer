@@ -13,8 +13,8 @@ public class RequestHandler implements HttpHandler {
     private static final String STATUS_OK = "{\"status_code\":0}\n";
     private static final String STATUS_NOT_OK = "{\"status_code\":1}\n";
 
-    private Database tasksDB;
-    private ServerSideAuthentication auth;
+    private final Database tasksDB;
+    private final ServerSideAuthentication auth;
 
     RequestHandler(Database tasksDB, ServerSideAuthentication auth){
         this.tasksDB = tasksDB;

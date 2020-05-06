@@ -91,6 +91,19 @@ public class Task {
     public List<String> getDependencies() { return dependencies; }
     public List<String> getDependents() { return dependents; }
 
+    public void setComplete(boolean complete) { isComplete = complete; }
+    public void setDateDue(Date dateDue) { this.dateDue = dateDue; }
+    public void setDateCreated(Date dateCreated) { this.dateCreated = dateCreated; }
+    public void setTaskName(String taskName) { this.taskName = taskName; }
+    public void setClaimed(boolean claimed) { isClaimed = claimed; }
+    public void setClaimedByEmail(String claimedByEmail) { this.claimedByEmail = claimedByEmail; }
+    public void setDateComplete(Date dateComplete) { this.dateComplete = dateComplete; }
+    public void setDescription(String description) { this.description = description; }
+    public void setDependencies(List<String> dependencies) { this.dependencies = dependencies; }
+    public void setID(int ID) { this.ID = ID; }
+    public void setRequirements(List<String> requirements) { this.requirements = requirements; }
+    public void setDependents(List<String> dependents) { this.dependents = dependents; }
+
     public JSONObject toJSON(){
         JSONObject json = new JSONObject();
 

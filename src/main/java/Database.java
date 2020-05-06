@@ -5,7 +5,7 @@ import java.util.List;
 
 public class Database {
 
-    private String database_URL;
+    private final String database_URL;
 
     Database(String url){
         database_URL = url;
