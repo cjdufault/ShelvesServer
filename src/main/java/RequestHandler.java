@@ -168,10 +168,11 @@ public class RequestHandler implements HttpHandler {
     }
 
     private String handlePostRequest(String requestKeyword, BufferedReader in, InetAddress remoteAddress) throws IOException{
-        String authHash = in.readLine();
+        String authHash = in.readLine(); // first line of the request body will be the pw hash
         boolean authenticated = auth.checkCredentials(authHash, remoteAddress);
 
         if (authenticated) { // only allow access if authenticated
+            // read the remainder of the request body
             StringBuilder payloadBuilder = new StringBuilder();
             String line;
             while ((line = in.readLine()) != null) {
@@ -180,7 +181,7 @@ public class RequestHandler implements HttpHandler {
             String payload = payloadBuilder.toString();
 
             switch (requestKeyword) {
-                case "auth": {
+                case "auth": { // confirms that the submitted credential is valid; does no other action
                     return STATUS_OK;
                 }
                 case "add_task": {

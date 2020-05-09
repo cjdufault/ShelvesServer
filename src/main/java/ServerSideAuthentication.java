@@ -45,7 +45,7 @@ class ServerSideAuthentication {
         return Hex.toHexString(digest);
     }
 
-    // generate a random long int and put it in a hash map with the client's IP address to be checked and removed later
+    // generate and hash a random long int and put it in a hash map with the client's IP address to be checked and removed later
     String getNonce(InetAddress remoteAddress) {
         Random random = new Random();
         long seed = random.nextLong();
